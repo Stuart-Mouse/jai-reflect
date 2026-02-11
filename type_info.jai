@@ -165,10 +165,10 @@ assert_base_type :: (type: *Type_Info, $type_tag: Type_Info_Tag) -> $R #modify {
 
 // ========== Enums ==========
 
-enum_name_to_value :: (type: *Type_Info, name: string) -> s64, bool {
+enum_name_to_value :: (type: *Type_Info, name: string) -> bool, s64 {
     enum_info := assert_base_type(type, .ENUM);
-    for enum_info.names  if name == it  return enum_info.values[it_index], true;
-    return 0, false;
+    for enum_info.names  if name == it  return true, enum_info.values[it_index];
+    return false, 0;
 }
 
 enum_value_to_name :: (type: *Type_Info, value: s64) -> string {
