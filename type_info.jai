@@ -193,6 +193,12 @@ get_enum_valid_range :: (type: *Type_Info) -> (min: int, max: int) {
 
 // ========== Structs ==========
 
+get_polymorph_source_struct :: (T: Type) -> *Type_Info_Struct { return get_polymorph_source_struct(T.(*Type_Info)); }
+get_polymorph_source_struct :: (type: *Type_Info) -> *Type_Info_Struct {
+    struct_info := assert_base_type(type, .STRUCT);
+    return struct_info.polymorph_source_struct;
+}
+
 get_member_info :: (struct_info: *Type_Info_Struct, name: string, recursive := false) -> (member_info: *Type_Info_Struct_Member, member_offset: int) {
     member_info:    *Type_Info_Struct_Member;
     member_offset:  int;
