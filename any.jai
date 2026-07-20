@@ -493,7 +493,7 @@ array_view :: (array: Any_Array, index: int, count := S64_MAX) -> Many_Any {
     This gives us the freedom to slice the Many_Any in a way we can't really do with the Any_Array.
     (You may notice that calling array_view on an Any_Array actually produces a Many_Any.)
     
-    In essence, the Many_Any is the the Any_Array what the array view is to a fixed or resizable array.
+    In essence, the Many_Any is to the the Any_Array what the array view is to a fixed or resizable array.
     You will find it most useful in situations where you need to modify only the elements, or consider sub-views of some larger array of unknown type.
     For an example of its use, you can see Any_Hash_Table.jai, where it is used to handle the Any_Table's `entries` array.
 */
@@ -616,7 +616,7 @@ init_range :: (view: Many_Any, begin: s64, count: s64) {
 //         // for example, there's no realistic way we can handle some polymorphic type like an Enumerated_Array
         
 //         // this idea may not really work, tbh...
-//         // and would even do us any good in, for example, the Table.Entry case, since that type is not really polymoprhic within the context of the table itself.
+//         // and wouldn't even do us any good in, for example, the Table.Entry case, since that type is not really polymoprhic within the context of the table itself.
 //     }
 // }
 
