@@ -295,8 +295,8 @@ make_fixed_array_type_info :: (count: int, element_type: *Type_Info) -> Type_Inf
 make_array_view_type_info :: (element_type: *Type_Info) -> Type_Info_Array {
     return .{
         type         = .ARRAY,
-        runtime_size = count * element_type.runtime_size,
-        element_type = size_of(Array_View_64),
+        runtime_size = size_of(Array_View_64),
+        element_type = element_type,
         array_type   = .VIEW,
         array_count  = -1,
     };

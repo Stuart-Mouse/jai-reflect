@@ -10,6 +10,7 @@ get_tagged_union_info :: inline (info: *Type_Info, $ASSERT := false) -> *Type_In
     return xx info;
 }
 
+// TODO: Add a #modify to reject types that are not tagged unions.
 get_tag_value_as_u64 :: (u: *$U) -> u64 {
     union_info := get_tagged_union_info(U, ASSERT = true);
     
@@ -25,6 +26,7 @@ get_tag_value_as_u64 :: (u: *$U) -> u64 {
     return value_as_u64;
 }
 
+// TODO: Add a #modify to reject types that are not tagged unions.
 get_valid_member :: (u: *$U) -> Any {
     tag_value := get_tag_value_as_u64(u);
     union_info := type_info(U);
@@ -336,8 +338,6 @@ set :: ($code: Code, $value_expression: Code, $loc := #caller_location) -> bool 
 
 /*
     `make` and `set` procedures were written by @Žick 
-    
-    
 */
 
 make :: ($type: Type, tag: Code, value := #code,null, loc := #caller_location) -> type #expand {
@@ -408,7 +408,7 @@ set :: (tu: *$T, $tag_code: Code, value_code := #code,null, loc := #caller_locat
 }
 
 
-// TODO: Ideally, we should not be taking `u` as Code here. 
+// TODO: Ideally, we should not be taking `u` as Code here.  LATER: Can't we just use #caller_code to get the code of u?
 match :: ($u: Code, $matches: ..Code, $loc := #caller_location) #modify {
     status, union_info := get_root_type(u);
     if !is_tagged_union(union_info)  return false, "u must be a tagged union.";

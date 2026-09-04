@@ -15,4 +15,5 @@
 #load "type_info.jai";
 #load "any.jai";
 #load "tagged_union.jai";
+#load "data_node.jai";
 

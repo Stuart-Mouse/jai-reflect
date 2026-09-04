@@ -1,0 +1,199 @@
+/*
+    The original purpose of the Data_Node struct was just to wrap an Any
+    to contain some infomration about where the data is located within some larger data structure.
+    
+    The main benefit of this is being able to provide something like a stack trace so that when we have some error 
+    deep down in code doing reflection stuff, we can see the context in which the error ocurred.
+    
+    I am now working on extending this structure to support many of the other reflection functionality from my utils module.
+    Perhaps this structure will end up being a good all-in-one replacement for the Any for complex reflection code.
+*/
+
+Data_Node :: struct {
+    type:           *Type_Info;
+    value_pointer:  *void;
+    parent:         *Data_Node;
+    
+    using info: Info;
+    
+    // TODO: maybe rename to as_any?
+    #overlay(type) any: Any; // because we can't `using` an Any 
+    
+    Kind :: enum { 
+        NO_CONTEXT :: 0; 
+        STRUCT_MEMBER; 
+        ARRAY_INDEX; 
+        DEREFERENCE; 
+    };
+    Info :: union kind: Kind {
+        .NO_CONTEXT,,       name:               string;
+        .STRUCT_MEMBER,,    member_info:        *Type_Info_Struct_Member;
+        .ARRAY_INDEX,,      index:              int;
+    }
+}
+
+format_data_trace :: (node: *Data_Node) -> string {
+    builder: String_Builder;
+    init_string_builder(*builder);
+    format_data_trace(*builder, node);
+    return builder_to_string(*builder);
+}
+
+format_data_trace :: (builder: *String_Builder, node: *Data_Node) {
+    if node.parent != null {
+        format_data_trace(builder, node.parent);
+    }
+    
+    if #complete node.kind == {
+      case .NO_CONTEXT;
+        if node.parent then append(builder, " -> "); // This is not a likely case, but I feel like we should have some kind of default delimiter if this occurs.
+        append(builder, node.name);
+      case .STRUCT_MEMBER;
+        print(builder, ".%", node.member_info.name);
+      case .ARRAY_INDEX;
+        print(builder, "[%]", node.index);
+      case .DEREFERENCE;
+        append(builder, ".*");
+    }
+}
+
+make_data_node :: (name: string, any: Any, kind := Data_Node.Kind.NO_CONTEXT, parent: *Data_Node = null) -> Data_Node {
+    return .{
+        kind = .NO_CONTEXT, 
+        name = name, 
+        any  = any,
+    };
+}
+
+dereference_pointer :: (data_node: *Data_Node) -> *Data_Node #expand {
+    pointer_info := assert_base_type(data_node.type, .POINTER);
+    
+    member_node := Data_Node.{ 
+        kind          = .DEREFERENCE, 
+        parent        = data_node, 
+        type          = pointer_info.pointer_to, 
+        value_pointer = data_node.value_pointer.(**void).*,
+    };
+    return *member_node;
+}
+
+// NOTE: macros are used to return a *Data_Node like this, since in most cases we want to allocate the Data_Node on the stack.
+//       maybe in the future I will add some alternate procs that return something allocated with temp
+
+get_struct_member :: (data_node: *Data_Node, member_name: string) -> *Data_Node #expand {
+    ok, any, member_info := get_struct_member(data_node.any, member_name, recursive = false);
+    if !ok  return null;
+    
+    member_node := Data_Node.{ 
+        kind        = .STRUCT_MEMBER, 
+        parent      = data_node, 
+        any         = any, 
+        member_info = member_info,
+    };
+    return *member_node;
+}
+
+get_union_tag :: (data_node: *Data_Node) -> *Data_Node #expand {
+    tag_any, tag_info := get_union_tag(data_node.any);
+    tag_node := Data_Node.{ 
+        kind        = .STRUCT_MEMBER, 
+        parent      = data_node, 
+        any         = tag_any, 
+        member_info = tag_info,
+    };
+    return *tag_node;
+}
+
+get_valid_union_member :: (data_node: *Data_Node) -> *Data_Node #expand {
+    ok, any, member_info := get_valid_union_member(data_node.any);
+    if !ok  return null;
+    
+    member_node := Data_Node.{ 
+        kind        = .STRUCT_MEMBER, 
+        parent      = data_node, 
+        any         = any, 
+        member_info = member_info,
+    };
+    return *member_node;
+}
+
+get_array_element :: (data_node: *Data_Node, index: int) -> *Data_Node #expand {
+    src_array := Any_Array.from(data_node.any);
+    element_any, ok := get_index(src_array, index);
+    if !ok  return null;
+    
+    element_node := Data_Node.{ 
+        kind        = .ARRAY_INDEX, 
+        parent      = data_node, 
+        any         = element_any, 
+        index       = index,
+    };
+    return *element_node;
+}
+
+
+// For expansions
+// NOTE: data node iterator is always by pointer, not by value
+
+/*
+    NOTE: 
+    The for_flags are maybe a bit unintuitive here, but I wanted the default to be the most common use case (iterating only non-constant, non-overlay members).
+    
+    The * now means 'include constant members'.
+        Perhaps this is counter-intuitive, and it should indicate to exclude constants.
+        But then we have a weird asymmetry in that one flag means 'include' and the other means 'exclude'.
+        
+    The < now means 'include #overlay members'.
+        This one perhaps makes a bit more sense, because including overlay members means we sometimes jump backwards in the struct.
+        
+    Also of note, this iterator asserts that you haven't passed it a union, since iterating the members of a union is basically nonsense.
+*/
+members :: (parent: *Data_Node, body: Code, flags: For_Flags) #expand {
+    struct_info := assert_base_type(parent.type, .STRUCT);
+    assert(struct_info.textual_flags & .UNION == 0);
+    
+    member_node := Data_Node.{ parent = parent, kind = .STRUCT_MEMBER };
+    `it := *member_node;
+    
+    // TODO: it_index here is not very meaningful...
+    for *it_info, `it_index: struct_info.members {
+        #if flags & .POINTER == 0 {
+            if it_info.flags & .CONSTANT  continue;
+        }
+        #if flags & .REVERSE == 0 {
+            if it_info.flags & .OVERLAY  continue;
+        }
+        
+        member_node.type          = it_info.type;
+        member_node.value_pointer = parent.value_pointer + it_info.offset_in_bytes;
+        member_node.member_info   = it_info;
+        
+        #insert body;
+    }
+}
+
+// NOTE: for_flags are ignored here.
+elements :: (parent: *Data_Node, body: Code, flags: For_Flags) #expand {
+    assert(flags == xx 0, "For_Flags are not currently supported in Data_Node elements iterator.");
+    
+    array_info := assert_base_type(parent.type, .ARRAY);
+    array_count, array_data := get_array_count_and_data(parent.value_pointer, array_info);
+    element_node := Data_Node.{ 
+        kind          = .ARRAY_INDEX, 
+        parent        = parent, 
+        type          = array_info.element_type,
+        value_pointer = array_data,
+        index         = 0,
+    };
+    
+    `it       := *element_node;
+    `it_index := 0;
+    while it_index < array_count {
+        defer {
+            it.value_pointer += array_info.element_type.runtime_size;
+            it.index += 1;
+            it_index += 1;
+        }
+        #insert body;
+    }
+}

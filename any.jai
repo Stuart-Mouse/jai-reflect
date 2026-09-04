@@ -267,13 +267,13 @@ to_any_number :: inline (value: $T) -> Any_Number #modify {
 } { 
     #if type_info(T).type == .ANY {
         assert(Any_Number.can_store_type(value.type));
-        ret := Any_Number.{ type = value.type }; 
-        memcpy(*ret.value, value.value_pointer, value.type.runtime_size);
-        return ret;
+        result := Any_Number.{ type = value.type }; 
+        memcpy(*result.value, value.value_pointer, value.type.runtime_size);
+        return result;
     } else {
-        ret := Any_Number.{ __type = T }; 
-        (*ret.value).(*T).* = value;
-        return ret;
+        result := Any_Number.{ __type = T }; 
+        (*result.value).(*T).* = value;
+        return result;
     }
 }
 
@@ -281,8 +281,8 @@ to_any_number :: inline (value: $T) -> Any_Number #modify {
 negate_number :: inline (any: *Any_Number) -> bool {
     if any.type.type == {
       case .INTEGER;
-        ti_integer := any.type.(*Type_Info_Integer);
-        if ti_integer.signed == false {
+        integer_info := any.type.(*Type_Info_Integer);
+        if integer_info.signed == false {
             log("Any_Number passed to negate_number was an unsigned integer type! (was %)", as_type(any.type));
             return false;
         }
@@ -581,8 +581,6 @@ resize :: (view: Many_Any, new_count: int, $$initialize := false) {
     if initialize  init_range(view, old_count, new_count - old_count);
 }
 
-// TODO: deduplicate with Any_Array's init_range, just pass required info for both to work
-//       maybe also do the same for array_view, idk
 init_range :: (view: Many_Any, begin: s64, count: s64) {
     if count <= 0  return;
     
