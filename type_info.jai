@@ -282,6 +282,7 @@ get_union_tag_type :: (union_type: *Type_Info) -> *Type_Info {
     In that case, here's a few helpful functions.
 */
 
+make_type_info_fixed_array :: make_fixed_array_type_info;
 make_fixed_array_type_info :: (count: int, element_type: *Type_Info) -> Type_Info_Array {
     return .{
         type         = .ARRAY,
@@ -292,6 +293,7 @@ make_fixed_array_type_info :: (count: int, element_type: *Type_Info) -> Type_Inf
     };
 }
 
+make_type_info_array_view :: make_array_view_type_info;
 make_array_view_type_info :: (element_type: *Type_Info) -> Type_Info_Array {
     return .{
         type         = .ARRAY,
@@ -302,6 +304,7 @@ make_array_view_type_info :: (element_type: *Type_Info) -> Type_Info_Array {
     };
 }
 
+make_type_info_resizable_array :: make_resizable_array_type_info;
 make_resizable_array_type_info :: (element_type: *Type_Info) -> Type_Info_Array {
     return .{
         type         = .ARRAY,
@@ -312,6 +315,7 @@ make_resizable_array_type_info :: (element_type: *Type_Info) -> Type_Info_Array 
     };
 }
 
+make_type_info_pointer :: make_pointer_type_info;
 make_pointer_type_info :: (pointer_to: *Type_Info) -> Type_Info_Pointer {
     return .{
         type         = .POINTER,
